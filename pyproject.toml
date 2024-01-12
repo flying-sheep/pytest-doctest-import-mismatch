@@ -16,16 +16,17 @@ dependencies = [
     'pandas',
     'scipy',
     'joblib',
+    'array_api_compat',
 ]
 
 [tool.hatch.build]
 exclude = [
-    'src/pytest_doctest_import_mismatch/tests/test_*.py',
+    'src/anndata/tests/test_*.py',
 ]
 
 [tool.pytest.ini_options]
 addopts = [
-    #'--import-mode=importlib',
+    '--import-mode=importlib',
     '--doctest-modules',
     '--pyargs',
 ]
