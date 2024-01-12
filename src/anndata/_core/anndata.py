@@ -9,7 +9,7 @@ from collections import OrderedDict
 from collections.abc import Iterable, Mapping, MutableMapping, Sequence
 from copy import copy, deepcopy
 from enum import Enum
-from functools import partial, singledispatch
+from functools import singledispatch
 from textwrap import dedent
 from typing import Any, Literal
 
@@ -25,7 +25,7 @@ from anndata._warnings import ImplicitModificationWarning
 from .. import utils
 from ..compat import _move_adj_mtx
 from ..logging import anndata_logger as logger
-from ..utils import convert_to_dict, deprecated, dim_len, ensure_df_homogeneous
+from ..utils import convert_to_dict, dim_len, ensure_df_homogeneous
 from .access import ElementRef
 from .aligned_mapping import (
     AxisArrays,
@@ -169,7 +169,7 @@ def _gen_dataframe_1d(
     raise ValueError(f"Cannot convert {type(anno)} to {attr} DataFrame")
 
 
-class AnnData(metaclass=utils.DeprecationMixinMeta):
+class AnnData:
     _BACKED_ATTRS = ["X", "raw.X"]
 
     # backwards compat
@@ -349,19 +349,6 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
             if shape is not None:
                 raise ValueError("`shape` needs to be `None` if `X` is not `None`.")
             _check_2d_shape(X)
-            # if type doesn’t match, a copy is made, otherwise, use a view
-            if dtype is not None:
-                warnings.warn(
-                    "The dtype argument is deprecated and will be removed in late 2024.",
-                    FutureWarning,
-                )
-                if issparse(X) or isinstance(X, ma.MaskedArray):
-                    # TODO: maybe use view on data attribute of sparse matrix
-                    #       as in readwrite.read_10x_h5
-                    if X.dtype != np.dtype(dtype):
-                        X = X.astype(dtype)
-                else:  # is np.ndarray or a subclass, convert to true np.ndarray
-                    X = np.array(X, dtype, copy=False)
             # data matrix and shape
             self._X = X
             n_obs, n_vars = X.shape
@@ -1175,28 +1162,6 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
                 layer = None
         return get_vector(self, k, "var", "obs", layer=layer)
 
-    @utils.deprecated("obs_vector")
-    def _get_obs_array(self, k, use_raw=False, layer=None):
-        """\
-        Get an array from the layer (default layer='X') along the :attr:`obs`
-        dimension by first looking up `obs.keys` and then :attr:`obs_names`.
-        """
-        if not use_raw or k in self.obs.columns:
-            return self.obs_vector(k=k, layer=layer)
-        else:
-            return self.raw.obs_vector(k)
-
-    @utils.deprecated("var_vector")
-    def _get_var_array(self, k, use_raw=False, layer=None):
-        """\
-        Get an array from the layer (default layer='X') along the :attr:`var`
-        dimension by first looking up `var.keys` and then :attr:`var_names`.
-        """
-        if not use_raw or k in self.var.columns:
-            return self.var_vector(k=k, layer=layer)
-        else:
-            return self.raw.var_vector(k)
-
     def _mutated_copy(self, **kwargs):
         """Creating AnnData with attributes optionally specified via kwargs."""
         new = {}
@@ -1228,286 +1193,6 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
             )
         else:
             return self._mutated_copy()
-
-    @deprecated(
-        "anndata.concat",
-        FutureWarning,
-        "See the tutorial for concat at: "
-        "https://anndata.readthedocs.io/en/latest/concatenation.html",
-        hide=False,
-    )
-    def concatenate(
-        self,
-        *adatas: AnnData,
-        join: str = "inner",
-        batch_key: str = "batch",
-        batch_categories: Sequence[Any] = None,
-        uns_merge: str | None = None,
-        index_unique: str | None = "-",
-        fill_value=None,
-    ) -> AnnData:
-        """\
-        Concatenate along the observations axis.
-
-        The :attr:`uns`, :attr:`varm` and :attr:`obsm` attributes are ignored.
-
-        Currently, this works only in `'memory'` mode.
-
-        .. note::
-
-            For more flexible and efficient concatenation, see: :func:`~anndata.concat`.
-
-        Parameters
-        ----------
-        adatas
-            AnnData matrices to concatenate with. Each matrix is referred to as
-            a “batch”.
-        join
-            Use intersection (`'inner'`) or union (`'outer'`) of variables.
-        batch_key
-            Add the batch annotation to :attr:`obs` using this key.
-        batch_categories
-            Use these as categories for the batch annotation. By default, use increasing numbers.
-        uns_merge
-            Strategy to use for merging entries of uns. These strategies are applied recusivley.
-            Currently implemented strategies include:
-
-            * `None`: The default. The concatenated object will just have an empty dict for `uns`.
-            * `"same"`: Only entries which have the same value in all AnnData objects are kept.
-            * `"unique"`: Only entries which have one unique value in all AnnData objects are kept.
-            * `"first"`: The first non-missing value is used.
-            * `"only"`: A value is included if only one of the AnnData objects has a value at this
-              path.
-        index_unique
-            Make the index unique by joining the existing index names with the
-            batch category, using `index_unique='-'`, for instance. Provide
-            `None` to keep existing indices.
-        fill_value
-            Scalar value to fill newly missing values in arrays with. Note: only applies to arrays
-            and sparse matrices (not dataframes) and will only be used if `join="outer"`.
-
-            .. note::
-                If not provided, the default value is `0` for sparse matrices and `np.nan`
-                for numpy arrays. See the examples below for more information.
-
-        Returns
-        -------
-        :class:`~anndata.AnnData`
-            The concatenated :class:`~anndata.AnnData`, where `adata.obs[batch_key]`
-            stores a categorical variable labeling the batch.
-
-        Notes
-        -----
-
-        .. warning::
-
-           If you use `join='outer'` this fills 0s for sparse data when
-           variables are absent in a batch. Use this with care. Dense data is
-           filled with `NaN`. See the examples.
-
-        Examples
-        --------
-        Joining on intersection of variables.
-
-        >>> adata1 = AnnData(
-        ...     np.array([[1, 2, 3], [4, 5, 6]]),
-        ...     dict(obs_names=['s1', 's2'], anno1=['c1', 'c2']),
-        ...     dict(var_names=['a', 'b', 'c'], annoA=[0, 1, 2]),
-        ... )
-        >>> adata2 = AnnData(
-        ...     np.array([[1, 2, 3], [4, 5, 6]]),
-        ...     dict(obs_names=['s3', 's4'], anno1=['c3', 'c4']),
-        ...     dict(var_names=['d', 'c', 'b'], annoA=[0, 1, 2]),
-        ... )
-        >>> adata3 = AnnData(
-        ...     np.array([[1, 2, 3], [4, 5, 6]]),
-        ...     dict(obs_names=['s1', 's2'], anno2=['d3', 'd4']),
-        ...     dict(var_names=['d', 'c', 'b'], annoA=[0, 2, 3], annoB=[0, 1, 2]),
-        ... )
-        >>> adata = adata1.concatenate(adata2, adata3)
-        >>> adata
-        AnnData object with n_obs × n_vars = 6 × 2
-            obs: 'anno1', 'anno2', 'batch'
-            var: 'annoA-0', 'annoA-1', 'annoA-2', 'annoB-2'
-        >>> adata.X
-        array([[2, 3],
-               [5, 6],
-               [3, 2],
-               [6, 5],
-               [3, 2],
-               [6, 5]])
-        >>> adata.obs
-             anno1 anno2 batch
-        s1-0    c1   NaN     0
-        s2-0    c2   NaN     0
-        s3-1    c3   NaN     1
-        s4-1    c4   NaN     1
-        s1-2   NaN    d3     2
-        s2-2   NaN    d4     2
-        >>> adata.var.T
-                 b  c
-        annoA-0  1  2
-        annoA-1  2  1
-        annoA-2  3  2
-        annoB-2  2  1
-
-        Joining on the union of variables.
-
-        >>> outer = adata1.concatenate(adata2, adata3, join='outer')
-        >>> outer
-        AnnData object with n_obs × n_vars = 6 × 4
-            obs: 'anno1', 'anno2', 'batch'
-            var: 'annoA-0', 'annoA-1', 'annoA-2', 'annoB-2'
-        >>> outer.var.T
-                   a    b    c    d
-        annoA-0  0.0  1.0  2.0  NaN
-        annoA-1  NaN  2.0  1.0  0.0
-        annoA-2  NaN  3.0  2.0  0.0
-        annoB-2  NaN  2.0  1.0  0.0
-        >>> outer.var_names
-        Index(['a', 'b', 'c', 'd'], dtype='object')
-        >>> outer.X
-        array([[ 1.,  2.,  3., nan],
-               [ 4.,  5.,  6., nan],
-               [nan,  3.,  2.,  1.],
-               [nan,  6.,  5.,  4.],
-               [nan,  3.,  2.,  1.],
-               [nan,  6.,  5.,  4.]])
-        >>> outer.X.sum(axis=0)
-        array([nan, 25., 23., nan])
-        >>> import pandas as pd
-        >>> Xdf = pd.DataFrame(outer.X, columns=outer.var_names)
-        >>> Xdf
-             a    b    c    d
-        0  1.0  2.0  3.0  NaN
-        1  4.0  5.0  6.0  NaN
-        2  NaN  3.0  2.0  1.0
-        3  NaN  6.0  5.0  4.0
-        4  NaN  3.0  2.0  1.0
-        5  NaN  6.0  5.0  4.0
-        >>> Xdf.sum()
-        a     5.0
-        b    25.0
-        c    23.0
-        d    10.0
-        dtype: float64
-
-        One way to deal with missing values is to use masked arrays:
-
-        >>> from numpy import ma
-        >>> outer.X = ma.masked_invalid(outer.X)
-        >>> outer.X
-        masked_array(
-          data=[[1.0, 2.0, 3.0, --],
-                [4.0, 5.0, 6.0, --],
-                [--, 3.0, 2.0, 1.0],
-                [--, 6.0, 5.0, 4.0],
-                [--, 3.0, 2.0, 1.0],
-                [--, 6.0, 5.0, 4.0]],
-          mask=[[False, False, False,  True],
-                [False, False, False,  True],
-                [ True, False, False, False],
-                [ True, False, False, False],
-                [ True, False, False, False],
-                [ True, False, False, False]],
-          fill_value=1e+20)
-        >>> outer.X.sum(axis=0).data
-        array([ 5., 25., 23., 10.])
-
-        The masked array is not saved but has to be reinstantiated after saving.
-
-        >>> outer.write('./test.h5ad')
-        >>> from anndata import read_h5ad
-        >>> outer = read_h5ad('./test.h5ad')
-        >>> outer.X
-        array([[ 1.,  2.,  3., nan],
-               [ 4.,  5.,  6., nan],
-               [nan,  3.,  2.,  1.],
-               [nan,  6.,  5.,  4.],
-               [nan,  3.,  2.,  1.],
-               [nan,  6.,  5.,  4.]])
-
-        For sparse data, everything behaves similarly,
-        except that for `join='outer'`, zeros are added.
-
-        >>> from scipy.sparse import csr_matrix
-        >>> adata1 = AnnData(
-        ...     csr_matrix([[0, 2, 3], [0, 5, 6]], dtype=np.float32),
-        ...     dict(obs_names=['s1', 's2'], anno1=['c1', 'c2']),
-        ...     dict(var_names=['a', 'b', 'c']),
-        ... )
-        >>> adata2 = AnnData(
-        ...     csr_matrix([[0, 2, 3], [0, 5, 6]], dtype=np.float32),
-        ...     dict(obs_names=['s3', 's4'], anno1=['c3', 'c4']),
-        ...     dict(var_names=['d', 'c', 'b']),
-        ... )
-        >>> adata3 = AnnData(
-        ... csr_matrix([[1, 2, 0], [0, 5, 6]], dtype=np.float32),
-        ...     dict(obs_names=['s5', 's6'], anno2=['d3', 'd4']),
-        ...     dict(var_names=['d', 'c', 'b']),
-        ... )
-        >>> adata = adata1.concatenate(adata2, adata3, join='outer')
-        >>> adata.var_names
-        Index(['a', 'b', 'c', 'd'], dtype='object')
-        >>> adata.X.toarray()
-        array([[0., 2., 3., 0.],
-               [0., 5., 6., 0.],
-               [0., 3., 2., 0.],
-               [0., 6., 5., 0.],
-               [0., 0., 2., 1.],
-               [0., 6., 5., 0.]], dtype=float32)
-        """
-        from .merge import concat, merge_dataframes, merge_outer, merge_same
-
-        if len(adatas) == 0:
-            return self.copy()
-        elif len(adatas) == 1 and not isinstance(adatas[0], AnnData):
-            adatas = adatas[0]  # backwards compatibility
-        all_adatas = (self,) + tuple(adatas)
-
-        out = concat(
-            all_adatas,
-            axis=0,
-            join=join,
-            label=batch_key,
-            keys=batch_categories,
-            uns_merge=uns_merge,
-            fill_value=fill_value,
-            index_unique=index_unique,
-            pairwise=False,
-        )
-
-        # Backwards compat (some of this could be more efficient)
-        # obs used to always be an outer join
-        out.obs = concat(
-            [AnnData(sparse.csr_matrix(a.shape), obs=a.obs) for a in all_adatas],
-            axis=0,
-            join="outer",
-            label=batch_key,
-            keys=batch_categories,
-            index_unique=index_unique,
-        ).obs
-        # Removing varm
-        del out.varm
-        # Implementing old-style merging of var
-        if batch_categories is None:
-            batch_categories = np.arange(len(all_adatas)).astype(str)
-        pat = rf"-({'|'.join(batch_categories)})$"
-        out.var = merge_dataframes(
-            [a.var for a in all_adatas],
-            out.var_names,
-            partial(merge_outer, batch_keys=batch_categories, merge=merge_same),
-        )
-        out.var = out.var.iloc[
-            :,
-            (
-                out.var.columns.str.extract(pat, expand=False)
-                .fillna("")
-                .argsort(kind="stable")
-            ),
-        ]
-
-        return out
 
     def var_names_make_unique(self, join: str = "-"):
         # Important to go through the setter so obsm dataframes are updated too
@@ -1630,11 +1315,6 @@ class AnnData(metaclass=utils.DeprecationMixinMeta):
     # --------------------------------------------------------------------------
     # all of the following is for backwards compat
     # --------------------------------------------------------------------------
-
-    @property
-    @utils.deprecated("is_view")
-    def isview(self):
-        return self.is_view
 
     def _clean_up_old_format(self, uns):
         # multicolumn keys

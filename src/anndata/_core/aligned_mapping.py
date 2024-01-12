@@ -12,7 +12,7 @@ from scipy.sparse import spmatrix
 
 from anndata._warnings import ImplicitModificationWarning
 
-from ..utils import deprecated, dim_len, ensure_df_homogeneous
+from ..utils import dim_len, ensure_df_homogeneous
 from .access import ElementRef
 from .index import _subset
 from .views import as_view, view_update
@@ -101,10 +101,6 @@ class AlignedMapping(cabc.MutableMapping, ABC):
     def _view(self, parent: AnnData, subset_idx: I):
         """Returns a subset copy-on-write view of the object."""
         return self._view_class(self, parent, subset_idx)
-
-    @deprecated("dict(obj)", FutureWarning)
-    def as_dict(self) -> dict:
-        return dict(self)
 
 
 class AlignedViewMixin:
