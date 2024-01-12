@@ -22,7 +22,6 @@ from scipy.sparse import issparse
 
 from .. import utils
 from ..compat import _move_adj_mtx
-from ..logging import anndata_logger as logger
 from ..utils import convert_to_dict, dim_len, ensure_df_homogeneous
 from .access import ElementRef
 from .aligned_mapping import (
@@ -932,10 +931,6 @@ class AnnData:
                 if isinstance(v2, np.ndarray) and v2.dtype.names is not None:
                     if list(v2.dtype.names) == old_categories:
                         self.uns[k1][k2].dtype.names = categories
-                    else:
-                        logger.warning(
-                            f"Omitting {k1}/{k2} as old categories do not match."
-                        )
 
     def strings_to_categoricals(self, df: pd.DataFrame | None = None):
         """\
@@ -983,7 +978,6 @@ class AnnData:
                         "error message while copying or writing to disk."
                     )
                 df[key] = c
-                logger.info(f"... storing {key!r} as categorical")
 
     _sanitize = strings_to_categoricals  # backwards compat
 

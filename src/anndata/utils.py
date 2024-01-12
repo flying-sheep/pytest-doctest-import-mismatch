@@ -2,19 +2,15 @@ from __future__ import annotations
 
 import re
 import warnings
-from functools import singledispatch, wraps
+from functools import singledispatch
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
 from scipy import sparse
 
-from .logging import get_logger
-
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
-
-logger = get_logger(__name__)
 
 
 def import_name(name: str) -> Any:
