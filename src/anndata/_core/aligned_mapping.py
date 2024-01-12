@@ -4,13 +4,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import abc as cabc
 from collections.abc import Iterator, Mapping, Sequence
-from typing import (
-    TYPE_CHECKING,
-    ClassVar,
-    Literal,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, ClassVar, Literal, TypeVar, Union
 
 import numpy as np
 import pandas as pd

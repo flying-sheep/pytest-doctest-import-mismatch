@@ -11,7 +11,7 @@ from copy import copy, deepcopy
 from enum import Enum
 from functools import partial, singledispatch
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -37,13 +37,7 @@ from .aligned_mapping import (
 )
 from .index import Index, Index1D, _normalize_indices, _subset, get_vector
 from .raw import Raw
-from .views import (
-    ArrayView,
-    DataFrameView,
-    DictView,
-    _resolve_idxs,
-    as_view,
-)
+from .views import ArrayView, DataFrameView, DictView, _resolve_idxs, as_view
 
 
 class StorageType(Enum):

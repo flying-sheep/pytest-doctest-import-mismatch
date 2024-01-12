@@ -7,7 +7,7 @@ from itertools import repeat
 
 import numpy as np
 import pandas as pd
-from scipy.sparse import csc_matrix, issparse, spmatrix
+from scipy.sparse import issparse, spmatrix
 
 from ..compat import Index, Index1D
 

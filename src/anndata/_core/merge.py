@@ -24,12 +24,10 @@ import pandas as pd
 from scipy import sparse
 from scipy.sparse import spmatrix
 
-from anndata._warnings import ExperimentalFeatureWarning
 
 from ..compat import _map_cat_to_str
-from ..utils import asarray, dim_len, warn_once
+from ..utils import asarray, dim_len
 from .anndata import AnnData
-from .index import _subset, make_slice
 
 if typing.TYPE_CHECKING:
     from pandas.api.extensions import ExtensionDtype
@@ -460,7 +458,7 @@ class Reindexer:
 
         fill_idxer = None
 
-        if len(to_fill) > 0 or isinstance(el, CupySparseMatrix):
+        if len(to_fill) > 0:
             idxmtx_dtype = xp.promote_types(el.dtype, xp.array(fill_value).dtype)
         else:
             idxmtx_dtype = bool
