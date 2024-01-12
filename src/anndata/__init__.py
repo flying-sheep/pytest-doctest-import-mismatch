@@ -11,12 +11,6 @@ if sys.version_info < (3, 11):
 from ._core.anndata import AnnData
 from ._core.merge import concat
 from ._core.raw import Raw
-from ._warnings import (
-    ExperimentalFeatureWarning,
-    ImplicitModificationWarning,
-    OldFormatWarning,
-    WriteWarning,
-)
 
 
 __all__ = [

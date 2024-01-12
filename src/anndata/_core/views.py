@@ -11,8 +11,6 @@ import pandas as pd
 from pandas.api.types import is_bool_dtype
 from scipy import sparse
 
-from anndata._warnings import ImplicitModificationWarning
-
 from .access import ElementRef
 
 if TYPE_CHECKING:
@@ -61,12 +59,6 @@ class _SetItemMixin:
         if self._view_args is None:
             super().__setitem__(idx, value)
         else:
-            warnings.warn(
-                f"Trying to modify attribute `.{self._view_args.attrname}` of view, "
-                "initializing view as actual.",
-                ImplicitModificationWarning,
-                stacklevel=2,
-            )
             with view_update(*self._view_args) as container:
                 container[idx] = value
 

@@ -20,8 +20,6 @@ from pandas.api.types import infer_dtype, is_string_dtype
 from scipy import sparse
 from scipy.sparse import issparse
 
-from anndata._warnings import ImplicitModificationWarning
-
 from .. import utils
 from ..compat import _move_adj_mtx
 from ..logging import anndata_logger as logger
@@ -149,7 +147,6 @@ def _gen_dataframe_df(
         raise _mk_df_error(source, attr, length, len(anno))
     anno = anno.copy(deep=False)
     if not is_string_dtype(anno.index):
-        warnings.warn("Transforming to str index.", ImplicitModificationWarning)
         anno.index = anno.index.astype(str)
     if not len(anno.columns):
         anno.columns = anno.columns.astype(str)
