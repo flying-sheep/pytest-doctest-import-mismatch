@@ -1,7 +1,7 @@
 pytest reproducer
 =================
 
-When using the following together, pytest 7.4.4 tries to import from different 
+When using the following together, pytest 7.4.4 fails to import from the correct module.
 The bug triggers in pytest’s collection phase.
 
 Necessary for the bug to trigger:
