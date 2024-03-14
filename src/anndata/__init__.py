@@ -1,4 +1,5 @@
 """Annotated multivariate observation data."""
+
 from __future__ import annotations
 
 # Allowing notes to be added to exceptions. See: https://github.com/scverse/anndata/issues/868
